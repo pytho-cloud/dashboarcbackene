@@ -8,7 +8,7 @@ class UserModelSerializer(serializers.Serializer):
     email = serializers.EmailField()
     created_at = serializers.DateTimeField(default=datetime.now)
     roll = serializers.CharField(max_length=50)
-    img = serializers.CharField(required=False, allow_blank=True)
+    img = serializers.CharField(required=False)
 
     def create(self, validated_data):
         return validated_data

@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render ,HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.mixins import ListModelMixin, CreateModelMixin
@@ -7,6 +7,7 @@ from .connection import user_collection ,db ,fs
 from .serializer import *
 from datetime import datetime
 from bson import ObjectId
+from django.http import Http404
 
 
 class UsersViewset(ListModelMixin, CreateModelMixin, viewsets.GenericViewSet):
@@ -63,8 +64,9 @@ class ServeImageView(APIView):
             file_id = ObjectId(image_id)
             grid_out = fs.get(file_id)
             # Set the Content-Type header to indicate that the response contains image data
-            response = Response(grid_out.read(), content_type=grid_out.content_type)
+            response = HttpResponse(grid_out.read(), content_type=grid_out.content_type)
+            response['Content-Disposition'] = f'inline; filename={grid_out.filename}'
             return response
         except Exception as e:
             print(e)
-            raise Response("Image not found")
+            raise Http404("Image not found")
