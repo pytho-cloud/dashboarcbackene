@@ -1,9 +1,10 @@
-from django.shortcuts import render ,HttpResponse
+from django.shortcuts import render, HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.mixins import ListModelMixin, CreateModelMixin
 from rest_framework.views import APIView
-from .connection import user_collection ,db ,fs
+from rest_framework.exceptions import NotFound
+from .connection import user_collection, db, fs
 from .serializer import *
 from datetime import datetime
 from bson import ObjectId
@@ -23,25 +24,35 @@ class UsersViewset(ListModelMixin, CreateModelMixin, viewsets.GenericViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def retrieve(self, request, pk=None):
+
+        user = user_collection.find_one({"name": pk}, {"_id": 0})
+
+        if not user:
+            raise NotFound(detail="User not found", code=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.get_serializer(user)
+        print(serializer.data ,"this is my single data")
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def create(self, request, *args, **kwargs):
         data = request.data
         print(data, "sdffff")
 
-     
-        image = request.FILES.get('img')
+        image = request.FILES.get("img")
         if image:
             image_id = self.handle_image_upload(image)
-            image_id_str = str(image_id) 
+            image_id_str = str(image_id)
         else:
             image_id_str = None
 
-        
         user = {
             "name": data.get("name"),
             "email": data.get("email"),
             "created_at": datetime.now(),
             "roll": data.get("roll"),
-            "img": image_id_str 
+            "img": image_id_str,
         }
 
         user_collection.insert_one(user)
@@ -49,13 +60,9 @@ class UsersViewset(ListModelMixin, CreateModelMixin, viewsets.GenericViewSet):
         return Response(status=status.HTTP_201_CREATED)
 
     def handle_image_upload(self, image):
-       
+
         image_id = fs.put(image, filename=image.name, content_type=image.content_type)
         return image_id
-
-
-
-
 
 
 class ServeImageView(APIView):
@@ -65,7 +72,7 @@ class ServeImageView(APIView):
             grid_out = fs.get(file_id)
             # Set the Content-Type header to indicate that the response contains image data
             response = HttpResponse(grid_out.read(), content_type=grid_out.content_type)
-            response['Content-Disposition'] = f'inline; filename={grid_out.filename}'
+            response["Content-Disposition"] = f"inline; filename={grid_out.filename}"
             return response
         except Exception as e:
             print(e)
