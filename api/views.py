@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.mixins import ListModelMixin, CreateModelMixin
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound
+from rest_framework.decorators import api_view
 from .connection import user_collection, db, fs
 from .serializer import *
 from datetime import datetime
@@ -59,6 +60,36 @@ class UsersViewset(ListModelMixin, CreateModelMixin, viewsets.GenericViewSet):
 
         return Response(status=status.HTTP_201_CREATED)
 
+    def update(self, request, pk=None):
+        data = request.data
+
+        user = user_collection.find_one({"name": pk})
+
+        if not user:
+            return NotFound(detail="User is not prsent", code=status.HTTP_404_NOT_FOUND)
+
+        image = request.FILES.get("img")
+
+        if image:
+            image_id = self.handle_image_upload(image)
+            image_id_str = str(image_id)
+        else:
+            image_id_str = None
+
+        user_data = {
+            "$set": {
+                "name": data.get("name"),
+                "email": data.get("email"),
+                "created_at": datetime.now(),
+                "roll": data.get("roll"),
+                "img": image_id_str,
+            }
+        }
+
+        users = user_collection.update_one({"name": pk}, user_data)
+
+        return Response("Update data more successfully", status=status.HTTP_200_OK)
+
     def handle_image_upload(self, image):
 
         image_id = fs.put(image, filename=image.name, content_type=image.content_type)
@@ -77,3 +108,38 @@ class ServeImageView(APIView):
         except Exception as e:
             print(e)
             raise Http404("Image not found")
+
+
+# This is View for update more information about user function based views
+
+
+@api_view(["GET", "POST"])
+def add_more_user_data(request, pk=None):
+    if request.method == "POST":
+
+        data = request.data
+        user = data.get("user_name")
+        user_stock = data.get("user_stock", "data is not come")
+        user_sales = data.get("user_sales", 0)
+        user_special_id = data.get("user_special_id", "not set")
+
+        update_details = {
+            "user_stock": user_stock,
+            "user_sales": user_sales,
+            "user_special_id": user_special_id,
+        }
+
+        update_query = {
+            "$push": {"user_details": update_details},
+            "$currentDate": {"updated_at": True},
+        }
+
+        users = user_collection.update_one({"name": user}, update_query)
+
+        return Response(
+            "Update data more successfully {}".format(users), status=status.HTTP_200_OK
+        )
+
+        return Response({"message": user_stock})
+
+    return Response({"message": "Hello, world!"})

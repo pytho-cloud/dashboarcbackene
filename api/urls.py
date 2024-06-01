@@ -11,4 +11,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("/images/<str:image_id>/", ServeImageView.as_view(), name="img"),
     path("", include(router.urls)),
+    path("/users-more/", add_more_user_data, name="add_more_user_data"),
 ]
